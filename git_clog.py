@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple  # noqa: F401  # pylint: disable=unused
 __author__ = "Ingo Heimbach"
 __email__ = "IJ_H@gmx.de"
 __license__ = "MIT"
-__version_info__ = (0, 0, 0)
+__version_info__ = (0, 1, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 COMMIT_CHAR_ASCII = "*"
