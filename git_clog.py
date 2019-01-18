@@ -87,7 +87,7 @@ def print_git_log(colorized_log_output: str) -> None:
     if encoding is None:
         encoding = "ascii"
     pager_process = subprocess.Popen(pager_with_options, stdin=subprocess.PIPE)
-    pager_process.communicate(input=colorized_log_output.encode(encoding))
+    pager_process.communicate(input=colorized_log_output.encode(encoding, "replace"))
 
 
 def print_version() -> None:
