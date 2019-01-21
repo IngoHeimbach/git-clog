@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import errno
 import locale
 import os
-import subprocess
+import pty
 import re
+import subprocess
 import sys
-from typing import List, Optional, Tuple  # noqa: F401  # pylint: disable=unused-import
+from typing import Iterator, List, Optional, Tuple  # noqa: F401  # pylint: disable=unused-import
 
 __author__ = "Ingo Heimbach"
 __email__ = "IJ_H@gmx.de"
@@ -13,13 +15,45 @@ __license__ = "MIT"
 __version_info__ = (0, 1, 2)
 __version__ = ".".join(map(str, __version_info__))
 
+BLOCK_SIZE = 1024
 COMMIT_CHAR_ASCII = "*"
 COMMIT_CHAR_UNICODE = "●"
 
 
+class ProcessError(Exception):
+    def __init__(self, returncode: int) -> None:
+        super().__init__()
+        self.returncode = returncode
+
+
+class GitLogError(ProcessError):
+    pass
+
+
+class PagerError(ProcessError):
+    pass
+
+
+def get_locale_encoding() -> str:
+    encoding = locale.getlocale()[1]
+    if encoding is None:
+        encoding = "ascii"
+    return encoding
+
+
 def is_locale_utf8() -> bool:
-    local_encoding = locale.getlocale()[1]
-    return local_encoding is not None and local_encoding.lower() == "utf-8"
+    locale_encoding = get_locale_encoding()
+    return locale_encoding.lower() == "utf-8"
+
+
+def decode(byte_string: bytes) -> str:
+    encoding = get_locale_encoding()
+    return byte_string.decode(encoding, "replace")
+
+
+def encode(unicode_string: str) -> bytes:
+    encoding = get_locale_encoding()
+    return unicode_string.encode(encoding, "replace")
 
 
 def get_pager_with_options() -> List[str]:
@@ -42,19 +76,42 @@ def get_pager_with_options() -> List[str]:
     return [pager] + pager_options
 
 
-def get_git_log() -> str:
-    git_log_output = subprocess.check_output(
-        ["git", "log", "--color=always", "--all", "--decorate", "--graph", "--oneline"], universal_newlines=True
-    )  # type: str
-    return git_log_output
+def gen_git_log() -> Iterator[str]:
+    master_fd, slave_fd = pty.openpty()
+    git_log_process = subprocess.Popen(
+        ["git", "log", "--color=always", "--all", "--decorate", "--graph", "--oneline"], stdout=slave_fd
+    )
+    os.close(slave_fd)  # otherwise read from `master_fd` will wait forever
+    byte_block = b""
+    try:
+        while True:
+            try:
+                current_bytes = os.read(master_fd, BLOCK_SIZE)
+            except OSError as e:
+                if e.errno != errno.EIO:
+                    raise
+                break  # EIO means EOF on some systems
+            if not current_bytes:
+                break
+            byte_block += current_bytes
+            if current_bytes.find(b"\n") >= 0:
+                lines = byte_block.split(b"\n")
+                for line in lines[:-1]:
+                    yield decode(line)
+                byte_block = lines[-1]
+    finally:
+        os.close(master_fd)
+    yield decode(byte_block)
+    returncode = git_log_process.wait()
+    if returncode != 0:
+        raise GitLogError(returncode)
 
 
-def colorize_git_log_output(git_log_output: str) -> str:
-    colorized_output_lines = []  # type: List[str]
+def gen_colorized_git_log_output(git_log_iterator: Iterator[str]) -> Iterator[str]:
     commit_char = COMMIT_CHAR_UNICODE if is_locale_utf8() else COMMIT_CHAR_ASCII
     line_regex = re.compile(r"([^\*]*)\*(.*\x1b[^m]*m)([0-9a-f]+)(\x1b[^m]*m.*)")
-    for line in git_log_output.split("\n"):
-        line = line.strip()
+    for line in git_log_iterator:
+        line = line.rstrip()
         if not line:
             continue
         match_obj = line_regex.match(line)
@@ -75,19 +132,24 @@ def colorize_git_log_output(git_log_output: str) -> str:
                     rest_of_line,
                 ]
             )
-            colorized_output_lines.append(colored_line)
+            yield colored_line
         else:
-            colorized_output_lines.append(line)
-    return "\n".join(colorized_output_lines)
+            yield line
 
 
-def print_git_log(colorized_log_output: str) -> None:
+def print_git_log(colorized_log_iterator: Iterator[str]) -> None:
     pager_with_options = get_pager_with_options()
-    encoding = locale.getlocale()[1]
-    if encoding is None:
-        encoding = "ascii"
     pager_process = subprocess.Popen(pager_with_options, stdin=subprocess.PIPE)
-    pager_process.communicate(input=colorized_log_output.encode(encoding, "replace"))
+    try:
+        for line in colorized_log_iterator:
+            pager_process.stdin.write(encode("{}\n".format(line)))
+            pager_process.stdin.flush()
+        pager_process.stdin.close()
+    except BrokenPipeError:
+        pass
+    returncode = pager_process.wait()
+    if returncode != 0:
+        raise PagerError(returncode)
 
 
 def print_version() -> None:
@@ -103,10 +165,10 @@ def main() -> None:
             print('Unknown command line argument "{}"'.format(sys.argv[1]))
             sys.exit(1)
     try:
-        git_log_output = get_git_log()
-        colorized_log_output = colorize_git_log_output(git_log_output)
-        print_git_log(colorized_log_output)
-    except subprocess.CalledProcessError as e:
+        git_log_generator = gen_git_log()
+        colorized_log_generator = gen_colorized_git_log_output(git_log_generator)
+        print_git_log(colorized_log_generator)
+    except (GitLogError, PagerError) as e:
         sys.exit(e.returncode)
     sys.exit()
 
