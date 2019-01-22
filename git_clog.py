@@ -12,7 +12,7 @@ from typing import Iterator, List, Optional, Tuple  # noqa: F401  # pylint: disa
 __author__ = "Ingo Heimbach"
 __email__ = "IJ_H@gmx.de"
 __license__ = "MIT"
-__version_info__ = (0, 2, 0)
+__version_info__ = (0, 2, 1)
 __version__ = ".".join(map(str, __version_info__))
 
 BLOCK_SIZE = 1024
@@ -79,7 +79,7 @@ def get_pager_with_options() -> List[str]:
 def gen_git_log() -> Iterator[str]:
     master_fd, slave_fd = pty.openpty()
     git_log_process = subprocess.Popen(
-        ["git", "log", "--color=always", "--all", "--decorate", "--graph", "--oneline"], stdout=slave_fd
+        ["git", "--no-pager", "log", "--color=always", "--all", "--decorate", "--graph", "--oneline"], stdout=slave_fd
     )
     os.close(slave_fd)  # otherwise read from `master_fd` will wait forever
     byte_block = b""
