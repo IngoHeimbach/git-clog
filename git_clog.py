@@ -101,7 +101,8 @@ def gen_git_log() -> Iterator[str]:
                 byte_block = lines[-1]
     finally:
         os.close(master_fd)
-    yield decode(byte_block)
+    if byte_block:
+        yield decode(byte_block)
     returncode = git_log_process.wait()
     if returncode != 0:
         raise GitLogError(returncode)
@@ -112,8 +113,6 @@ def gen_colorized_git_log_output(git_log_iterator: Iterator[str]) -> Iterator[st
     line_regex = re.compile(r"([^\*]*)\*(.*\x1b[^m]*m)([0-9a-f]+)(\x1b[^m]*m.*)")
     for line in git_log_iterator:
         line = line.rstrip()
-        if not line:
-            continue
         match_obj = line_regex.match(line)
         if match_obj is not None:
             line_start, before_commit_hash, commit_hash, rest_of_line = match_obj.groups()
