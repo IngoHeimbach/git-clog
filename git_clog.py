@@ -12,7 +12,7 @@ from typing import Iterator, List, Optional, Tuple  # noqa: F401  # pylint: disa
 __author__ = "Ingo Heimbach"
 __email__ = "IJ_H@gmx.de"
 __license__ = "MIT"
-__version_info__ = (0, 2, 2)
+__version_info__ = (0, 2, 3)
 __version__ = ".".join(map(str, __version_info__))
 
 BLOCK_SIZE = 1024
@@ -110,7 +110,7 @@ def gen_git_log() -> Iterator[str]:
 
 def gen_colorized_git_log_output(git_log_iterator: Iterator[str]) -> Iterator[str]:
     commit_char = COMMIT_CHAR_UNICODE if is_locale_utf8() else COMMIT_CHAR_ASCII
-    line_regex = re.compile(r"([^\*]*)\*(.*\x1b[^m]*m)([0-9a-f]+)(\x1b[^m]*m.*)")
+    line_regex = re.compile(r"([^\*]*)\*([^()]*\x1b[^m]*m)([0-9a-f]+)(\x1b[^m]*m.*)")
     for line in git_log_iterator:
         line = line.rstrip()
         match_obj = line_regex.match(line)
