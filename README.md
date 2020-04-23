@@ -17,6 +17,13 @@ six commit hash digits as an RGB color value:
 python3 -m pip install git-clog
 ```
 
+If you use Arch Linux or one of its derivatives, you can also install `git-clog` from the
+[AUR](https://aur.archlinux.org/packages/git-clog/):
+
+```bash
+yay -S git-clog
+```
+
 After the installation, call
 
 ```bash
