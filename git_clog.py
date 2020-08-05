@@ -9,8 +9,8 @@ import subprocess
 import sys
 from typing import Iterator, List, Optional, Tuple  # noqa: F401  # pylint: disable=unused-import
 
-__author__ = "Ingo Heimbach"
-__email__ = "IJ_H@gmx.de"
+__author__ = "Ingo Meyer"
+__email__ = "IJ_M@gmx.de"
 __license__ = "MIT"
 __version_info__ = (0, 2, 5)
 __version__ = ".".join(map(str, __version_info__))

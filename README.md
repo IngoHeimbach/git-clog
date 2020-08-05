@@ -5,7 +5,7 @@
 `git clog` outputs the commit graph of the current Git repository and colorizes commit symbols by interpreting the first
 six commit hash digits as an RGB color value:
 
-![git clog screenshot](https://raw.githubusercontent.com/IngoHeimbach/git-clog/master/screenshot.png)
+![git clog screenshot](https://raw.githubusercontent.com/IngoMeyer441/git-clog/master/screenshot.png)
 
 **Important note**: You need a [terminal with true color support](https://gist.github.com/XVilka/8346728).
 
